@@ -76,4 +76,33 @@ app.post('/tweets', async (req, res) => {
     }
 });
 
+app.get('/tweets', async (req, res) => {
+    try {
+        const tweets = await db.collection('tweets')
+            .find({})
+            .sort({ _id: -1 })
+            .toArray();
+
+        if (tweets.length === 0) {
+            return res.status(200).json([]);
+        }
+
+        const tweetsWithAvatar = await Promise.all(
+            tweets.map(async tweet => {
+                const user = await db.collection('users').findOne({ username: tweet.username });
+
+                return {
+                    _id: tweet._id,
+                    username: tweet.username,
+                    avatar: user ? user.avatar : '',
+                    tweet: tweet.tweet,
+                };
+            }));
+
+        return res.status(200).json(tweetsWithAvatar);
+    } catch (err) {
+        return res.status(500).send(err);
+    }
+});
+
 app.listen(process.env.PORT, () => console.log(`Rodando na porta ${process.env.PORT}`))
