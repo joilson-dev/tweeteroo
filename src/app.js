@@ -62,13 +62,13 @@ app.post('/tweets', async (req, res) => {
 
     try {
 
-        const user = await db.collection('users').findOne({ username: userName });
+        const user = await db.collection('users').findOne({ userName });
 
         if (!user) {
             return res.status(401).send('Usuário não cadastrado');
         }
 
-        await db.collection('tweets').insertOne({ username: userName, tweet, avatar: user.avatar });
+        await db.collection('tweets').insertOne({ userName, tweet });
 
         return res.status(201).send('Tweet criado com sucesso');
     } catch (err) {
@@ -103,6 +103,38 @@ app.get('/tweets', async (req, res) => {
     } catch (err) {
         return res.status(500).send(err);
     }
+});
+
+app.put('/tweets/:id', async (req, res) => {
+    const { id } = req.params;
+    const { userName, tweet } = req.body;
+
+    if (!ObjectId.isValid(id)) {
+        return res.status(400).send('ID inválido');
+    }
+
+    const { error } = tweetSchema.validate({ userName, tweet }, { abortEarly: false });
+    if (error) {
+        return res.status(422).json({ errors: error.details.map(err => err.message) });
+    }
+
+    const user = await db.collection('users').findOne({ userName });
+    if (!user) {
+        return res.status(401).send('Usuário não cadastrado');
+    }
+
+    const findTweet = await db.collection('tweets').findOne({ _id: new ObjectId(id) });
+    if (!findTweet) {
+        return res.status(404).send('ID do tweet não encontrado!');
+    }
+
+    if (findTweet.userName !== userName) {
+        return res.status(403).send('Você não tem permissão para editar este tweet');
+    }
+
+    await db.collection('tweets').updateOne({ _id: new ObjectId(id) }, { $set: { tweet } });
+
+    return res.status(204).send();
 });
 
 app.listen(process.env.PORT, () => console.log(`Rodando na porta ${process.env.PORT}`))
