@@ -137,4 +137,28 @@ app.put('/tweets/:id', async (req, res) => {
     return res.status(204).send();
 });
 
+app.delete('/tweets/:id', async (req, res) => {
+    const { id } = req.params;
+
+    if (!ObjectId.isValid(id)) {
+        return res.status(400).send('ID inválido');
+    }
+
+    const findIdTweet = await db.collection('tweets').findOne({ _id: new ObjectId(id) })
+
+    if (!findIdTweet) {
+        return res.status(404).send('ID do tweet não encontrado!');
+    }
+
+    try {
+        const result = await db.collection('tweets').deleteOne({ _id: new ObjectId(id) });
+
+        if (result.deletedCount === 0) return res.sendStatus(404);
+
+        res.status(204).send('Tweet deletado com sucesso');
+    } catch (error) {
+        res.status(500).send(error);
+    }
+});
+
 app.listen(process.env.PORT, () => console.log(`Rodando na porta ${process.env.PORT}`))
